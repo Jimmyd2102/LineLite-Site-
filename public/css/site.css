@@ -1043,3 +1043,48 @@
     html { scroll-behavior: auto; }
     .fade-up { opacity: 1; transform: none; transition: none; }
   }
+
+  /* ── TEAM PAGE ── */
+  .nav-links a.is-current { color: var(--pink); opacity: 1; }
+  .team-hero { position: relative; overflow: hidden; padding: 176px 0 110px; }
+  .team-hero-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background: linear-gradient(90deg, rgba(18,19,26,0.94) 38%, rgba(18,19,26,0.55) 100%),
+                url('/img/street-crew.jpg') center 45%/cover no-repeat;
+  }
+  .team-hero .container { position: relative; z-index: 1; }
+  .team-hero h1 {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
+    font-size: clamp(48px, 7vw, 84px); line-height: 0.95; letter-spacing: -1px;
+    text-transform: uppercase; margin-bottom: 24px; max-width: 760px;
+  }
+  .team-hero h1 .line-pink { color: var(--pink); }
+  .team-hero h1 .line-cyan { color: var(--cyan); }
+  .team-hero p { font-size: 15px; color: rgba(255,255,255,0.7); max-width: 440px; line-height: 1.7; }
+  .team-inline-link { color: var(--cyan); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--cyan); }
+  .team-inline-link:hover { color: white; border-color: white; }
+  .about-card.about-card-cyan { border-left-color: var(--cyan); }
+  .team-btns { margin-top: 32px; }
+  .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .team-card { background: var(--dark3); border: 1px solid rgba(255,255,255,0.06); border-radius: 2px; padding: 28px 26px; }
+  .team-photo {
+    width: 100%; aspect-ratio: 1 / 1; margin-bottom: 20px;
+    background: var(--card-bg); border: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gray); font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .team-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .team-role {
+    display: block; font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
+    font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px;
+  }
+  .team-card h3 {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 24px;
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .team-card p { font-size: 14px; color: var(--gray); line-height: 1.6; }
+  @media (max-width: 860px) {
+    .team-hero { padding: 120px 0 72px; }
+    .team-grid { grid-template-columns: 1fr; }
+  }
