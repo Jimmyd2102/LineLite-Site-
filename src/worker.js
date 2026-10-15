@@ -305,6 +305,12 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
 
+    // Never handle passwords or form data over plain http
+    if (url.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(url.hostname)) {
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 301);
+    }
+
     // Old Wix URLs
     if (path === '/apply-today') return Response.redirect(new URL('/apply', url).toString(), 301);
 
