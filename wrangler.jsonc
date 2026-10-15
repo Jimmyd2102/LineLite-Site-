@@ -26,7 +26,7 @@
     // Comma-separate to add more addresses.
     "NOTIFY_TO": "info@linelite.net",
     // Sender address; linelite.net must be verified in Resend for this to work.
-    "NOTIFY_FROM": "LineLite Website <forms@linelite.net>"
+    "NOTIFY_FROM": "Line Lite Website <forms@linelite.net>"
   },
   "observability": { "enabled": true }
 }

@@ -1,4 +1,4 @@
-// LineLite site Worker
+// Line Lite site Worker
 // - Serves the static site from /public (Cloudflare static assets)
 // - POST /api/apply  -> saves a job application to D1
 // - POST /api/bid    -> saves a client bid request to D1
@@ -176,7 +176,7 @@ async function sendNotification(env, cfg, row, request) {
     method: 'POST',
     headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      from: env.NOTIFY_FROM || 'LineLite Website <onboarding@resend.dev>',
+      from: env.NOTIFY_FROM || 'Line Lite Website <onboarding@resend.dev>',
       to: env.NOTIFY_TO.split(',').map((s) => s.trim()),
       reply_to: row.email,
       subject: cfg.title(row),
@@ -232,7 +232,7 @@ async function handleAdmin(request, env, url) {
   if (!auth) {
     return new Response('Login required', {
       status: 401,
-      headers: { 'www-authenticate': 'Basic realm="LineLite admin", charset="UTF-8"' },
+      headers: { 'www-authenticate': 'Basic realm="Line Lite admin", charset="UTF-8"' },
     });
   }
 
@@ -278,7 +278,7 @@ async function handleAdmin(request, env, url) {
   }).join('');
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Submissions | LineLite</title><link rel="icon" href="/favicon.ico"><meta name="robots" content="noindex">
+<title>Submissions | Line Lite</title><link rel="icon" href="/favicon.ico"><meta name="robots" content="noindex">
 <style>
 :root{--pink:#e8006f;--cyan:#00b4d8;--dark:#12131a;--dark2:#1a1b25;--line:rgba(255,255,255,.09)}
 *{box-sizing:border-box}body{margin:0;background:var(--dark);color:#fff;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
