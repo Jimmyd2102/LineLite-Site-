@@ -22,7 +22,7 @@ wrangler.jsonc          Cloudflare config (Worker name, D1 binding)
 
 - Both forms save to the D1 database `linelite-forms` (tables `applications` and `bid_requests`). The tables are created automatically on the first submission.
 - View them at **https://linelite.net/admin**. Any username works; the password is the `ADMIN_PASSWORD` secret. There's a **Download CSV** button on each tab.
-- Optional email alerts: add a `RESEND_API_KEY` secret (free account at resend.com) and every submission is emailed to `NOTIFY_TO` (set in `wrangler.jsonc`, currently info@linelite.net). To send from an @linelite.net address, verify the domain in Resend and add a `NOTIFY_FROM` variable such as `LineLite Website <forms@linelite.net>`.
+- Optional email alerts: add a `RESEND_API_KEY` secret (free account at resend.com) and every submission is emailed to `NOTIFY_TO` (set in `wrangler.jsonc`, currently admin@linelite.net) from `NOTIFY_FROM` (forms@linelite.net). linelite.net must be verified in Resend for that sender to work. The admin@ Google Group must allow posts from outside the group.
 
 ## One-time setup in Cloudflare
 

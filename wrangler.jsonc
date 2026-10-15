@@ -20,8 +20,11 @@
     }
   ],
   "vars": {
-    // Where submission emails go (only used if a RESEND_API_KEY secret is added)
-    "NOTIFY_TO": "info@linelite.net"
+    // Where submission emails go (only sent once a RESEND_API_KEY secret is added).
+    // Comma-separate to add more addresses.
+    "NOTIFY_TO": "admin@linelite.net",
+    // Sender address; linelite.net must be verified in Resend for this to work.
+    "NOTIFY_FROM": "LineLite Website <forms@linelite.net>"
   },
   "observability": { "enabled": true }
 }
