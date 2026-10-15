@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Apply | LineLite</title>
+<meta name="description" content="Apply to join the Line Lite crew — outside plant telecom construction careers." />
+<meta name="theme-color" content="#12131a" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/site.css" />
+</head>
+<body class="form-page">
+
+<header class="form-hero has-photo">
+  <div class="form-hero-bg" style="background-image:url('/img/street-crew.jpg');background-position:center 35%;"></div>
+  <div class="container">
+    <a href="/" class="form-brand" aria-label="Back to LineLite home">
+      <img src="/img/logo.png" alt="LineLite logo" width="52" height="52" />
+      <span>Line Lite</span>
+    </a>
+    <div class="eyebrow-plain">Careers</div>
+    <h1>Build With Us.</h1>
+    <p>Apply to join Line Lite. Tell us about your experience and availability. We'll use this information only to evaluate your application and contact you about employment opportunities.</p>
+  </div>
+</header>
+
+<main class="form-wrap">
+  <div class="form-card">
+    <form data-endpoint="/api/apply">
+      <h2 class="form-section-title">About You</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="full_name">Full name <span class="req">*</span></label>
+          <input type="text" id="full_name" name="full_name" autocomplete="name" required maxlength="120" />
+        </div>
+        <div class="field">
+          <label for="phone">Phone <span class="req">*</span></label>
+          <input type="tel" id="phone" name="phone" autocomplete="tel" required maxlength="40" />
+        </div>
+        <div class="field">
+          <label for="email">Email <span class="req">*</span></label>
+          <input type="email" id="email" name="email" autocomplete="email" required maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="location">City &amp; state <span class="req">*</span></label>
+          <input type="text" id="location" name="location" autocomplete="address-level2" placeholder="e.g. Noblesville, IN" required maxlength="120" />
+        </div>
+      </div>
+
+      <h2 class="form-section-title">The Job</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="position">Position you're applying for <span class="req">*</span></label>
+          <select id="position" name="position" required>
+            <option value="">Select one…</option>
+            <option>Lineman / Aerial Tech</option>
+            <option>Groundman</option>
+            <option>Bucket Operator</option>
+            <option>Fiber Splicer</option>
+            <option>Foreman / Crew Lead</option>
+            <option>Apprentice / No Experience</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="experience_years">Years of telecom / utility experience</label>
+          <select id="experience_years" name="experience_years">
+            <option value="">Select one…</option>
+            <option>None — ready to learn</option>
+            <option>Less than 1 year</option>
+            <option>1–3 years</option>
+            <option>3–5 years</option>
+            <option>5+ years</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="drivers_license">Driver's license</label>
+          <select id="drivers_license" name="drivers_license">
+            <option value="">Select one…</option>
+            <option>CDL Class A</option>
+            <option>CDL Class B</option>
+            <option>Regular license (no CDL)</option>
+            <option>No valid license</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="start_date">Earliest start date</label>
+          <input type="date" id="start_date" name="start_date" />
+        </div>
+        <div class="field full">
+          <label for="experience">Tell us about your experience</label>
+          <textarea id="experience" name="experience" maxlength="4000" placeholder="Aerial construction, strand, lashing, fiber, bucket work, equipment, leadership experience, etc."></textarea>
+        </div>
+        <div class="field full">
+          <label for="notes">Anything else we should know?</label>
+          <textarea id="notes" name="notes" maxlength="4000" placeholder="Schedule, travel availability, certifications, or other relevant information."></textarea>
+        </div>
+      </div>
+
+      <!-- Spam trap: real people never see or fill this -->
+      <div class="hp" aria-hidden="true">
+        <label for="website">Leave this empty</label>
+        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div class="checks-stack">
+        <label class="check"><input type="checkbox" name="willing_to_travel" /> I am willing to travel for project work when needed.</label>
+        <label class="check"><input type="checkbox" name="work_authorized" required /> <span>I certify that I am legally authorized to work in the United States. <span class="req">*</span></span></label>
+        <label class="check"><input type="checkbox" name="consent" required /> <span>I consent to Line Lite storing this information and contacting me about employment opportunities. <span class="req">*</span></span></label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Submit Application</button>
+        <a href="/" class="back-link">← Back to Line Lite</a>
+      </div>
+
+      <div id="form-status" class="form-status" role="alert"></div>
+
+      <p class="form-fine">Line Lite is an equal opportunity employer. Do not include Social Security numbers, medical information, or other sensitive personal information in this form. See our <a href="/privacy-policy">privacy policy</a>.</p>
+    </form>
+
+    <div id="form-success" class="form-success" role="status">
+      <div class="check-badge">✓</div>
+      <h2>Application Received</h2>
+      <p>Thanks for applying to Line Lite. We review every application and will reach out by phone or email if there's a fit.</p>
+      <a href="/" class="btn-primary">Back to Line Lite</a>
+    </div>
+  </div>
+</main>
+
+<script src="/js/forms.js" defer></script>
+</body>
+</html>
