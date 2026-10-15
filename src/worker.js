@@ -190,6 +190,18 @@ async function sendNotification(env, cfg, row, request) {
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
+const BOOL_FIELDS = new Set(['willing_to_travel', 'work_authorized', 'consent']);
+function fmtTime(t) {
+  if (!t) return '';
+  const d = new Date(String(t).replace(' ', 'T') + 'Z');
+  if (isNaN(d)) return t;
+  return d.toLocaleString('en-US', { timeZone: 'America/Indianapolis', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ET';
+}
+function fmtVal(k, v) {
+  if (BOOL_FIELDS.has(k)) return v ? 'Yes' : 'No';
+  if (k === 'created_at') return fmtTime(v);
+  return v;
+}
 function labelize(k) {
   return k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
@@ -258,9 +270,9 @@ async function handleAdmin(request, env, url) {
   const rows = results.map((r) => {
     const detail = Object.entries(r)
       .filter(([k]) => !['id'].includes(k))
-      .map(([k, v]) => `<div class="kv"><span>${esc(labelize(k))}</span><p>${esc(v)}</p></div>`)
+      .map(([k, v]) => `<div class="kv"><span>${esc(labelize(k))}</span><p>${esc(fmtVal(k, v))}</p></div>`)
       .join('');
-    return `<details><summary><span class="date">${esc((r.created_at || '').replace('T', ' ').slice(0, 16))} UTC</span>${summary(r)
+    return `<details><summary><span class="date">${esc(fmtTime(r.created_at))}</span>${summary(r)
       .map((v) => `<span>${esc(v)}</span>`)
       .join('')}</summary><div class="detail">${detail}</div></details>`;
   }).join('');
