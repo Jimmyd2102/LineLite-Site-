@@ -35,3 +35,7 @@ wrangler.jsonc          Cloudflare config (Worker name, D1 binding)
 
 - Change text or photos in `public/`, commit, push. Cloudflare redeploys in about a minute.
 - Run it locally: `npm install`, then `npx wrangler dev` (uses a local copy of the database). Put `ADMIN_PASSWORD="anything"` in a `.dev.vars` file to try `/admin` locally.
+
+## Swapping a service photo
+
+Each service card has its own file in `public/img/services/` (e.g. `fiber-splicing.jpg`). To change one, upload a new photo on GitHub with the **exact same file name** into that folder (Add file → Upload files, inside `public/img/services`). Keep it around 1400px on the long side and under ~400 KB. The site updates on its own after the upload.
