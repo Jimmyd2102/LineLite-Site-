@@ -1,0 +1,27 @@
+{
+  // Must match the existing Worker name in Cloudflare so deploys update the live site.
+  "name": "billowing-tooth-cf1a",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-10-01",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    // Only these paths run the Worker code; everything else is served as a static file (free).
+    "run_worker_first": ["/api/*", "/admin", "/admin/*", "/apply-today", "/apply-today/"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "linelite-forms",
+      "database_id": "98540441-0b8c-4462-89f7-be1c4752fd1c"
+    }
+  ],
+  "vars": {
+    // Where submission emails go (only used if a RESEND_API_KEY secret is added)
+    "NOTIFY_TO": "info@linelite.net"
+  },
+  "observability": { "enabled": true }
+}

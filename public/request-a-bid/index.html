@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Request a Bid | LineLite</title>
+<meta name="description" content="Tell Line Lite about your outside plant project — aerial, underground, maintenance, or break/fix — and get a bid." />
+<meta name="theme-color" content="#12131a" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/site.webmanifest" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/site.css" />
+</head>
+<body class="form-page">
+
+<header class="form-hero has-photo">
+  <div class="form-hero-bg" style="background-image:url('/img/crew-trucks.jpg');background-position:center 45%;"></div>
+  <div class="container">
+    <a href="/" class="form-brand" aria-label="Back to LineLite home">
+      <img src="/img/logo.png" alt="LineLite logo" width="52" height="52" />
+      <span>Line Lite</span>
+    </a>
+    <div class="eyebrow-plain">Hire Line Lite</div>
+    <h1>Request a Bid.</h1>
+    <p>Tell us about the job — what needs to be done, where, and when. We'll review the scope and follow up with availability and pricing.</p>
+  </div>
+</header>
+
+<main class="form-wrap">
+  <div class="form-card">
+    <form data-endpoint="/api/bid">
+      <h2 class="form-section-title">Your Company</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="company">Company name <span class="req">*</span></label>
+          <input type="text" id="company" name="company" autocomplete="organization" required maxlength="160" />
+        </div>
+        <div class="field">
+          <label for="company_type">Company type</label>
+          <select id="company_type" name="company_type">
+            <option value="">Select one…</option>
+            <option>Prime / general contractor</option>
+            <option>ISP / carrier</option>
+            <option>Electric co-op / utility</option>
+            <option>Municipality / public entity</option>
+            <option>Engineering / design firm</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="contact_name">Your name <span class="req">*</span></label>
+          <input type="text" id="contact_name" name="contact_name" autocomplete="name" required maxlength="120" />
+        </div>
+        <div class="field">
+          <label for="title">Title / role</label>
+          <input type="text" id="title" name="title" autocomplete="organization-title" placeholder="e.g. Project Manager" maxlength="120" />
+        </div>
+        <div class="field">
+          <label for="email">Email <span class="req">*</span></label>
+          <input type="email" id="email" name="email" autocomplete="email" required maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="phone">Phone <span class="req">*</span></label>
+          <input type="tel" id="phone" name="phone" autocomplete="tel" required maxlength="40" />
+        </div>
+      </div>
+
+      <h2 class="form-section-title">The Project</h2>
+      <div class="form-grid">
+        <div class="field full" data-require-one="Type of work">
+          <span class="label">Type of work <span class="req">*</span></span>
+          <div class="check-grid">
+            <label class="check"><input type="checkbox" name="work_types" value="Aerial construction" /> Aerial construction</label>
+            <label class="check"><input type="checkbox" name="work_types" value="Fiber splicing" /> Fiber splicing</label>
+            <label class="check"><input type="checkbox" name="work_types" value="Underground fiber pulling / jetting" /> Underground fiber pulling / jetting</label>
+            <label class="check"><input type="checkbox" name="work_types" value="New build FTTH" /> New build FTTH</label>
+            <label class="check"><input type="checkbox" name="work_types" value="Long haul fiber" /> Long haul fiber</label>
+            <label class="check"><input type="checkbox" name="work_types" value="Emergency break & fix" /> Emergency break &amp; fix</label>
+            <label class="check"><input type="checkbox" name="work_types" value="Storm damage repair" /> Storm damage repair</label>
+            <label class="check"><input type="checkbox" name="work_types" value="OSP maintenance" /> OSP maintenance</label>
+            <label class="check"><input type="checkbox" name="work_types" value="Project management assistance" /> Project management assistance</label>
+            <label class="check"><input type="checkbox" name="work_types" value="Other" /> Other</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="project_location">Project location <span class="req">*</span></label>
+          <input type="text" id="project_location" name="project_location" placeholder="City / county, state" required maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="scope_size">Approximate size</label>
+          <input type="text" id="scope_size" name="scope_size" placeholder="e.g. 40,000 ft aerial, 120 homes passed" maxlength="200" />
+        </div>
+        <div class="field">
+          <label for="start_timing">When do you need a crew?</label>
+          <select id="start_timing" name="start_timing">
+            <option value="">Select one…</option>
+            <option>Emergency / ASAP</option>
+            <option>Within 2 weeks</option>
+            <option>Within 1–2 months</option>
+            <option>3+ months out</option>
+            <option>Just budgeting / planning</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="duration">Expected duration</label>
+          <select id="duration" name="duration">
+            <option value="">Select one…</option>
+            <option>One-time / short job</option>
+            <option>A few weeks</option>
+            <option>1–6 months</option>
+            <option>6+ months / ongoing</option>
+            <option>Not sure yet</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="prints_ready">Are prints / designs ready?</label>
+          <select id="prints_ready" name="prints_ready">
+            <option value="">Select one…</option>
+            <option>Yes</option>
+            <option>In progress</option>
+            <option>No</option>
+            <option>Not applicable</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="crews_needed">Crews needed</label>
+          <input type="text" id="crews_needed" name="crews_needed" placeholder="e.g. 2 bucket crews" maxlength="120" />
+        </div>
+        <div class="field full">
+          <label for="details">Project details <span class="req">*</span></label>
+          <textarea id="details" name="details" required maxlength="6000" placeholder="Scope, pole owner / attachment details, network owner, rates or unit pricing you're working with, site conditions, anything that helps us bid it right."></textarea>
+        </div>
+        <div class="field full">
+          <label for="referral">How did you hear about us?</label>
+          <input type="text" id="referral" name="referral" maxlength="200" />
+        </div>
+      </div>
+
+      <!-- Spam trap: real people never see or fill this -->
+      <div class="hp" aria-hidden="true">
+        <label for="website">Leave this empty</label>
+        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div class="checks-stack">
+        <label class="check"><input type="checkbox" name="consent" required /> <span>I agree to Line Lite storing this information and contacting me about this project. <span class="req">*</span></span></label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Send Bid Request</button>
+        <a href="/" class="back-link">← Back to Line Lite</a>
+      </div>
+
+      <div id="form-status" class="form-status" role="alert"></div>
+
+      <p class="form-fine">Have prints, a rate sheet, or a map to share? Mention it above and we'll reply with where to send it, or email <a href="mailto:info@linelite.net">info@linelite.net</a>. See our <a href="/privacy-policy">privacy policy</a>.</p>
+    </form>
+
+    <div id="form-success" class="form-success" role="status">
+      <div class="check-badge">✓</div>
+      <h2>Request Received</h2>
+      <p>Thanks — your project details are in. Someone from Line Lite will follow up with you shortly about scope, availability, and pricing.</p>
+      <a href="/" class="btn-primary">Back to Line Lite</a>
+    </div>
+  </div>
+</main>
+
+<script src="/js/forms.js" defer></script>
+</body>
+</html>
