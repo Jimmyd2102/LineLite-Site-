@@ -19,6 +19,8 @@
       "database_id": "98540441-0b8c-4462-89f7-be1c4752fd1c"
     }
   ],
+  // Keep variables added in the Cloudflare dashboard when deploying from GitHub.
+  "keep_vars": true,
   "vars": {
     // Where submission emails go (only sent once a RESEND_API_KEY secret is added).
     // Comma-separate to add more addresses.
