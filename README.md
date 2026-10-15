@@ -26,7 +26,7 @@ wrangler.jsonc          Cloudflare config (Worker name, D1 binding)
 
 ## One-time setup in Cloudflare
 
-1. **Create the database:** Storage & Databases → D1 SQL Database → Create → name it `linelite-forms`. Copy its **Database ID** into `wrangler.jsonc` where it says `PASTE_D1_DATABASE_ID_HERE`, and commit.
+1. **Create the database:** Storage & Databases → D1 SQL Database → Create → name it `linelite-forms`. Its ID is already in `wrangler.jsonc`.
 2. **Connect this repo:** Workers & Pages → `billowing-tooth-cf1a` → Settings → Build → Connect to Git → pick `Jimmyd2102/LineLite-Site-`, branch `main`. Leave the build command empty; deploy command is `npx wrangler deploy`.
 3. **Set the admin password:** same Worker → Settings → Variables and Secrets → Add → type **Secret**, name `ADMIN_PASSWORD`.
 4. Push to `main` (or retry the build). Every push to `main` now deploys the site automatically.
