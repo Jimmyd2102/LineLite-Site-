@@ -2,7 +2,7 @@
 // - Serves the static site from /public (Cloudflare static assets)
 // - POST /api/apply  -> saves a job application to D1
 // - POST /api/bid    -> saves a client bid request to D1
-// - GET  /admin      -> password-protected list of submissions (+ CSV export)
+// - GET  /admin      -> password-protected list of submissions (+ CSV export, resume downloads)
 // - Optional: emails a notification for each submission if RESEND_API_KEY is set
 
 const SCHEMA = [
@@ -47,7 +47,32 @@ const SCHEMA = [
     ip TEXT,
     user_agent TEXT
   )`,
+  // Resume files, stored as base64 pieces because D1 caps a single value at 2 MB.
+  `CREATE TABLE IF NOT EXISTS resume_chunks (
+    file_id TEXT NOT NULL,
+    seq INTEGER NOT NULL,
+    data TEXT NOT NULL,
+    PRIMARY KEY (file_id, seq)
+  )`,
 ];
+
+// Added after the applications table first went live, so existing databases need them too.
+const APPLICATION_COLUMNS = ['resume_url', 'resume_file_name', 'resume_file_type', 'resume_file_id'];
+
+const RESUME_MAX_BYTES = 5 * 1024 * 1024;
+const RESUME_CHUNK_CHARS = 1500000;
+const MAX_BODY_BYTES = 8 * 1024 * 1024; // 5 MB file as base64, plus the rest of the form
+const RESUME_TYPES = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  rtf: 'application/rtf',
+  txt: 'text/plain',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  heic: 'image/heic',
+};
 
 const FORMS = {
   apply: {
@@ -55,7 +80,7 @@ const FORMS = {
     label: 'Job application',
     required: ['full_name', 'email', 'phone', 'location', 'position'],
     mustBeTrue: { work_authorized: 'Please confirm you are authorized to work in the U.S.', consent: 'Please check the consent box.' },
-    text: ['full_name', 'email', 'phone', 'location', 'position', 'experience_years', 'drivers_license', 'start_date', 'experience', 'notes'],
+    text: ['full_name', 'email', 'phone', 'location', 'position', 'experience_years', 'drivers_license', 'start_date', 'experience', 'notes', 'resume_url'],
     bool: ['willing_to_travel', 'work_authorized', 'consent'],
     list: [],
     title: (d) => `New application: ${d.full_name} (${d.position || 'position n/a'})`,
@@ -80,7 +105,16 @@ const FIELD_NAMES = {
 let schemaReady = null;
 function ensureSchema(env) {
   if (!schemaReady) {
-    schemaReady = env.DB.batch(SCHEMA.map((sql) => env.DB.prepare(sql))).catch((err) => {
+    schemaReady = (async () => {
+      await env.DB.batch(SCHEMA.map((sql) => env.DB.prepare(sql)));
+      for (const col of APPLICATION_COLUMNS) {
+        try {
+          await env.DB.prepare(`ALTER TABLE applications ADD COLUMN ${col} TEXT`).run();
+        } catch (err) {
+          if (!/duplicate column/i.test(String(err && err.message))) throw err;
+        }
+      }
+    })().catch((err) => {
       schemaReady = null;
       throw err;
     });
@@ -99,6 +133,37 @@ function clean(value, max = 6000) {
   return String(value).replace(/\u0000/g, '').trim().slice(0, max);
 }
 
+// Accepts "linkedin.com/in/x" or a full URL. Returns null if it isn't a web link.
+function normalizeUrl(value) {
+  if (!value) return '';
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(value) ? value : `https://${value}`;
+  try {
+    const u = new URL(candidate);
+    if ((u.protocol !== 'https:' && u.protocol !== 'http:') || !u.hostname.includes('.')) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+// Checks the uploaded resume. Returns { error } or { name, type, base64 }.
+function parseResume(file) {
+  if (!file || typeof file !== 'object' || typeof file.data !== 'string') return { error: 'We couldn\u2019t read your resume file' };
+  const name = clean(file.name, 200).replace(/[\\/\r\n"]/g, '_');
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+  const type = RESUME_TYPES[ext];
+  if (!type) return { error: 'Resume must be a PDF, Word document, text file, or photo' };
+  let bytes;
+  try {
+    bytes = atob(file.data).length;
+  } catch {
+    return { error: 'We couldn\u2019t read your resume file' };
+  }
+  if (!bytes) return { error: 'That resume file is empty' };
+  if (bytes > RESUME_MAX_BYTES) return { error: 'Resume file must be 5 MB or smaller' };
+  return { name, type, base64: file.data };
+}
+
 async function handleSubmit(kind, request, env, ctx) {
   const cfg = FORMS[kind];
 
@@ -106,6 +171,10 @@ async function handleSubmit(kind, request, env, ctx) {
   const origin = request.headers.get('origin');
   if (origin && new URL(origin).host !== new URL(request.url).host) {
     return json({ ok: false, error: 'Bad origin' }, 403);
+  }
+
+  if (Number(request.headers.get('content-length')) > MAX_BODY_BYTES) {
+    return json({ ok: false, error: 'Resume file must be 5 MB or smaller' }, 413);
   }
 
   let data;
@@ -142,6 +211,21 @@ async function handleSubmit(kind, request, env, ctx) {
     return json({ ok: false, error: 'Please pick at least one type of work' }, 400);
   }
 
+  let resume = null;
+  if (kind === 'apply') {
+    const link = normalizeUrl(row.resume_url);
+    if (link === null) return json({ ok: false, error: 'Please check your resume link' }, 400);
+    row.resume_url = link;
+
+    if (data.resume_file) {
+      resume = parseResume(data.resume_file);
+      if (resume.error) return json({ ok: false, error: resume.error }, 400);
+      row.resume_file_name = resume.name;
+      row.resume_file_type = resume.type;
+      row.resume_file_id = crypto.randomUUID();
+    }
+  }
+
   row.ip = request.headers.get('cf-connecting-ip') || '';
   row.user_agent = clean(request.headers.get('user-agent'), 300);
 
@@ -149,23 +233,33 @@ async function handleSubmit(kind, request, env, ctx) {
     await ensureSchema(env);
     const cols = Object.keys(row);
     const sql = `INSERT INTO ${cfg.table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`;
-    const result = await env.DB.prepare(sql).bind(...cols.map((c) => row[c])).run();
-    row.id = result.meta && result.meta.last_row_id;
+    const statements = [env.DB.prepare(sql).bind(...cols.map((c) => row[c]))];
+    if (resume) {
+      for (let i = 0, seq = 0; i < resume.base64.length; i += RESUME_CHUNK_CHARS, seq++) {
+        statements.push(
+          env.DB.prepare('INSERT INTO resume_chunks (file_id, seq, data) VALUES (?, ?, ?)')
+            .bind(row.resume_file_id, seq, resume.base64.slice(i, i + RESUME_CHUNK_CHARS)),
+        );
+      }
+    }
+    // A batch is all-or-nothing, so an application is never saved with half a resume.
+    const results = await env.DB.batch(statements);
+    row.id = results[0].meta && results[0].meta.last_row_id;
   } catch (err) {
     console.error('D1 insert failed', err);
     return json({ ok: false, error: 'Server error' }, 500);
   }
 
   if (env.RESEND_API_KEY && env.NOTIFY_TO) {
-    ctx.waitUntil(sendNotification(env, cfg, row, request).catch((err) => console.error('Email failed', err)));
+    ctx.waitUntil(sendNotification(env, cfg, row, request, resume).catch((err) => console.error('Email failed', err)));
   }
 
   return json({ ok: true });
 }
 
 // ── Email notification (optional, via Resend) ──
-async function sendNotification(env, cfg, row, request) {
-  const skip = new Set(['ip', 'user_agent', 'id']);
+async function sendNotification(env, cfg, row, request, resume) {
+  const skip = new Set(['ip', 'user_agent', 'id', 'resume_file_type', 'resume_file_id']);
   const lines = Object.entries(row)
     .filter(([k]) => !skip.has(k))
     .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#666;vertical-align:top;white-space:nowrap">${esc(labelize(k))}</td><td style="padding:4px 0">${esc(v === 1 ? 'Yes' : v === 0 ? 'No' : v).replace(/\n/g, '<br>')}</td></tr>`)
@@ -181,6 +275,7 @@ async function sendNotification(env, cfg, row, request) {
       reply_to: row.email,
       subject: cfg.title(row),
       html,
+      ...(resume ? { attachments: [{ filename: resume.name, content: resume.base64 }] } : {}),
     }),
   });
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
@@ -201,6 +296,15 @@ function fmtVal(k, v) {
   if (BOOL_FIELDS.has(k)) return v ? 'Yes' : 'No';
   if (k === 'created_at') return fmtTime(v);
   return v;
+}
+function fmtDetail(k, r) {
+  if (k === 'resume_url' && r.resume_url) {
+    return `<a href="${esc(r.resume_url)}" target="_blank" rel="noopener noreferrer">${esc(r.resume_url)}</a>`;
+  }
+  if (k === 'resume_file_name' && r.resume_file_id) {
+    return `<a href="/admin/resume?id=${encodeURIComponent(r.resume_file_id)}">${esc(r.resume_file_name)}</a>`;
+  }
+  return esc(fmtVal(k, r[k]));
 }
 function labelize(k) {
   return k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -253,6 +357,24 @@ async function handleAdmin(request, env, url) {
     });
   }
 
+  if (url.pathname === '/admin/resume') {
+    const id = url.searchParams.get('id') || '';
+    const app = await env.DB.prepare('SELECT resume_file_name, resume_file_type FROM applications WHERE resume_file_id = ?').bind(id).first();
+    if (!id || !app) return new Response('Resume not found', { status: 404 });
+    const { results } = await env.DB.prepare('SELECT data FROM resume_chunks WHERE file_id = ? ORDER BY seq').bind(id).all();
+    const binary = atob(results.map((c) => c.data).join(''));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    // Always a download, never opened on this site: these files come from the public.
+    return new Response(bytes, {
+      headers: {
+        'content-type': app.resume_file_type || 'application/octet-stream',
+        'content-disposition': `attachment; filename="${app.resume_file_name.replace(/[^\w.() -]/g, '_')}"`,
+        'x-content-type-options': 'nosniff',
+        'cache-control': 'no-store',
+      },
+    });
+  }
+
   const tab = url.searchParams.get('tab') === 'bid' ? 'bid' : 'apply';
   const [apps, bids] = await Promise.all([
     env.DB.prepare('SELECT COUNT(*) AS n FROM applications').first(),
@@ -269,8 +391,8 @@ async function handleAdmin(request, env, url) {
 
   const rows = results.map((r) => {
     const detail = Object.entries(r)
-      .filter(([k]) => !['id'].includes(k))
-      .map(([k, v]) => `<div class="kv"><span>${esc(labelize(k))}</span><p>${esc(fmtVal(k, v))}</p></div>`)
+      .filter(([k]) => !['id', 'resume_file_type', 'resume_file_id'].includes(k))
+      .map(([k]) => `<div class="kv"><span>${esc(labelize(k))}</span><p>${fmtDetail(k, r)}</p></div>`)
       .join('');
     return `<details><summary><span class="date">${esc(fmtTime(r.created_at))}</span>${summary(r)
       .map((v) => `<span>${esc(v)}</span>`)
@@ -293,7 +415,7 @@ main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 details{border-top:1px solid var(--line)}summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}
 summary:hover{background:var(--dark2)}summary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.date{color:#9a9aaa}
 .detail{background:var(--dark2);padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px 24px}
-.kv span{color:#9a9aaa;font-size:12px;text-transform:uppercase;letter-spacing:1px}.kv p{margin:2px 0 0;white-space:pre-wrap;word-break:break-word}
+.kv span{color:#9a9aaa;font-size:12px;text-transform:uppercase;letter-spacing:1px}.kv p{margin:2px 0 0;white-space:pre-wrap;word-break:break-word}.kv a{color:var(--cyan)}
 .empty{color:#9a9aaa;padding:30px 12px}
 @media(max-width:800px){.head{display:none}summary{grid-template-columns:1fr}summary span:nth-child(n+5){display:none}}
 </style></head><body>
@@ -331,7 +453,7 @@ export default {
       return handleSubmit(path === '/api/apply' ? 'apply' : 'bid', request, env, ctx);
     }
 
-    if (path === '/admin' || path === '/admin/export') {
+    if (path === '/admin' || path === '/admin/export' || path === '/admin/resume') {
       try {
         return await handleAdmin(request, env, url);
       } catch (err) {
