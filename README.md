@@ -23,6 +23,7 @@ wrangler.jsonc          Cloudflare config (Worker name, D1 binding)
 - Both forms save to the D1 database `linelite-forms` (tables `applications` and `bid_requests`). The tables are created automatically on the first submission.
 - Resumes attached to applications (5 MB max) are saved in D1 too, in the `resume_chunks` table. Download them from the application's details on the admin page.
 - View them at **https://linelite.net/admin**. Any username works; the password is the `ADMIN_PASSWORD` secret. There's a **Download CSV** button on each tab.
+- Tap the star on a job application to favorite it, then use the **Favorites** button to show only those. Favorites are saved in D1 (`applications.favorite`), so everyone who logs in sees the same list.
 - Optional email alerts: add a `RESEND_API_KEY` secret (free account at resend.com) and every submission is emailed to `NOTIFY_TO` (set in `wrangler.jsonc`, currently info@linelite.net) from `NOTIFY_FROM` (forms@linelite.net). linelite.net must be verified in Resend for that sender to work.
 
 ## One-time setup in Cloudflare

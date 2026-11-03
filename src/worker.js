@@ -2,7 +2,7 @@
 // - Serves the static site from /public (Cloudflare static assets)
 // - POST /api/apply  -> saves a job application to D1
 // - POST /api/bid    -> saves a client bid request to D1
-// - GET  /admin      -> password-protected list of submissions (+ CSV export, resume downloads)
+// - GET  /admin      -> password-protected list of submissions (+ CSV export, resume downloads, favorite applicants)
 // - Optional: emails a notification for each submission if RESEND_API_KEY is set
 
 const SCHEMA = [
@@ -57,7 +57,13 @@ const SCHEMA = [
 ];
 
 // Added after the applications table first went live, so existing databases need them too.
-const APPLICATION_COLUMNS = ['resume_url', 'resume_file_name', 'resume_file_type', 'resume_file_id'];
+const APPLICATION_COLUMNS = [
+  'resume_url TEXT',
+  'resume_file_name TEXT',
+  'resume_file_type TEXT',
+  'resume_file_id TEXT',
+  'favorite INTEGER NOT NULL DEFAULT 0',
+];
 
 const RESUME_MAX_BYTES = 5 * 1024 * 1024;
 const RESUME_CHUNK_CHARS = 1500000;
@@ -109,7 +115,7 @@ function ensureSchema(env) {
       await env.DB.batch(SCHEMA.map((sql) => env.DB.prepare(sql)));
       for (const col of APPLICATION_COLUMNS) {
         try {
-          await env.DB.prepare(`ALTER TABLE applications ADD COLUMN ${col} TEXT`).run();
+          await env.DB.prepare(`ALTER TABLE applications ADD COLUMN ${col}`).run();
         } catch (err) {
           if (!/duplicate column/i.test(String(err && err.message))) throw err;
         }
@@ -342,9 +348,23 @@ async function handleAdmin(request, env, url) {
 
   await ensureSchema(env);
 
+  if (url.pathname === '/admin/favorite') {
+    if (request.method !== 'POST') return json({ ok: false, error: 'Method not allowed' }, 405);
+    // The browser re-sends the admin login by itself, so another site must not be able to post here.
+    const origin = request.headers.get('origin');
+    if (!origin || new URL(origin).host !== url.host) return json({ ok: false, error: 'Bad origin' }, 403);
+    const body = await request.json().catch(() => null);
+    const id = body && body.id;
+    if (!Number.isInteger(id) || typeof body.favorite !== 'boolean') return json({ ok: false, error: 'Invalid request' }, 400);
+    const result = await env.DB.prepare('UPDATE applications SET favorite = ? WHERE id = ?').bind(body.favorite ? 1 : 0, id).run();
+    if (!result.meta.changes) return json({ ok: false, error: 'Application not found' }, 404);
+    return json({ ok: true });
+  }
+
   if (url.pathname === '/admin/export') {
     const kind = url.searchParams.get('type') === 'bid' ? 'bid' : 'apply';
-    const { results } = await env.DB.prepare(`SELECT * FROM ${FORMS[kind].table} ORDER BY id DESC`).all();
+    const favOnly = kind === 'apply' && url.searchParams.get('fav') === '1';
+    const { results } = await env.DB.prepare(`SELECT * FROM ${FORMS[kind].table} ${favOnly ? 'WHERE favorite = 1' : ''} ORDER BY id DESC`).all();
     const cols = results.length ? Object.keys(results[0]) : [];
     const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const csv = [cols.join(','), ...results.map((r) => cols.map((c) => csvCell(r[c])).join(','))].join('\r\n');
@@ -376,11 +396,14 @@ async function handleAdmin(request, env, url) {
   }
 
   const tab = url.searchParams.get('tab') === 'bid' ? 'bid' : 'apply';
-  const [apps, bids] = await Promise.all([
+  const isApply = tab === 'apply';
+  const favOnly = isApply && url.searchParams.get('fav') === '1';
+  const [apps, bids, favs] = await Promise.all([
     env.DB.prepare('SELECT COUNT(*) AS n FROM applications').first(),
     env.DB.prepare('SELECT COUNT(*) AS n FROM bid_requests').first(),
+    env.DB.prepare('SELECT COUNT(*) AS n FROM applications WHERE favorite = 1').first(),
   ]);
-  const { results } = await env.DB.prepare(`SELECT * FROM ${FORMS[tab].table} ORDER BY id DESC LIMIT 500`).all();
+  const { results } = await env.DB.prepare(`SELECT * FROM ${FORMS[tab].table} ${favOnly ? 'WHERE favorite = 1' : ''} ORDER BY id DESC LIMIT 500`).all();
 
   const summary = tab === 'apply'
     ? (r) => [r.full_name, r.position, r.location, r.phone, r.email]
@@ -391,12 +414,15 @@ async function handleAdmin(request, env, url) {
 
   const rows = results.map((r) => {
     const detail = Object.entries(r)
-      .filter(([k]) => !['id', 'resume_file_type', 'resume_file_id'].includes(k))
+      .filter(([k]) => !['id', 'resume_file_type', 'resume_file_id', 'favorite'].includes(k))
       .map(([k]) => `<div class="kv"><span>${esc(labelize(k))}</span><p>${fmtDetail(k, r)}</p></div>`)
       .join('');
+    const star = isApply
+      ? `<button type="button" class="fav" data-id="${r.id}" aria-pressed="${r.favorite ? 'true' : 'false'}" aria-label="Favorite ${esc(r.full_name)}" title="Favorite">\u2605</button>`
+      : '';
     return `<details><summary><span class="date">${esc(fmtTime(r.created_at))}</span>${summary(r)
       .map((v) => `<span>${esc(v)}</span>`)
-      .join('')}</summary><div class="detail">${detail}</div></details>`;
+      .join('')}${star}</summary><div class="detail">${detail}</div></details>`;
   }).join('');
 
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -409,26 +435,58 @@ header img{width:36px;height:36px}header b{font-size:18px;letter-spacing:.5px;te
 main{max-width:1200px;margin:0 auto;padding:20px 16px 60px}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
 .tabs a{color:#fff;text-decoration:none;padding:8px 14px;border:1px solid var(--line);border-radius:3px}
-.tabs a.on{background:var(--pink);border-color:var(--pink)}.tabs .csv{margin-left:auto;color:var(--cyan);border-color:rgba(0,180,216,.4)}
-.head,summary{display:grid;grid-template-columns:175px repeat(${heads.length},minmax(0,1fr));gap:12px;padding:10px 12px}
+.tabs a.on{background:var(--pink);border-color:var(--pink)}.tabs .favs{color:#ffc53d;border-color:rgba(255,197,61,.4)}.tabs .favs.on{background:#ffc53d;border-color:#ffc53d;color:var(--dark)}.tabs .csv{margin-left:auto;color:var(--cyan);border-color:rgba(0,180,216,.4)}
+.head,summary{display:grid;grid-template-columns:175px repeat(${heads.length},minmax(0,1fr))${isApply ? ' 36px' : ''};gap:12px;padding:10px 12px}
 .head{color:#9a9aaa;font-size:12px;text-transform:uppercase;letter-spacing:1px}
 details{border-top:1px solid var(--line)}summary{cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}
 summary:hover{background:var(--dark2)}summary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.date{color:#9a9aaa}
 .detail{background:var(--dark2);padding:12px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px 24px}
 .kv span{color:#9a9aaa;font-size:12px;text-transform:uppercase;letter-spacing:1px}.kv p{margin:2px 0 0;white-space:pre-wrap;word-break:break-word}.kv a{color:var(--cyan)}
 .empty{color:#9a9aaa;padding:30px 12px}
-@media(max-width:800px){.head{display:none}summary{grid-template-columns:1fr}summary span:nth-child(n+5){display:none}}
+.fav{width:36px;height:36px;margin:-6px 0;padding:0;background:none;border:0;color:#55566a;font-size:22px;line-height:1;cursor:pointer}
+.fav:hover{color:#ffc53d}.fav[aria-pressed="true"]{color:#ffc53d}
+@media(max-width:800px){.head{display:none}summary{grid-template-columns:1fr;position:relative;padding-right:56px}summary span:nth-child(n+5){display:none}.fav{position:absolute;top:8px;right:6px;width:44px;height:44px;margin:0}}
 </style></head><body>
 <header><img src="/img/logo.png" alt=""><b>Line Lite · Submissions</b></header>
 <main>
 <div class="tabs">
 <a href="/admin?tab=apply" class="${tab === 'apply' ? 'on' : ''}">Job applications (${apps.n})</a>
 <a href="/admin?tab=bid" class="${tab === 'bid' ? 'on' : ''}">Bid requests (${bids.n})</a>
-<a class="csv" href="/admin/export?type=${tab}">Download CSV</a>
+${isApply ? `<a class="favs ${favOnly ? 'on' : ''}" href="/admin?tab=apply${favOnly ? '' : '&fav=1'}">\u2605 Favorites (<span id="fav-count">${favs.n}</span>)</a>` : ''}
+<a class="csv" href="/admin/export?type=${tab}${favOnly ? '&fav=1' : ''}">Download CSV</a>
 </div>
-<div class="head"><span>Received</span>${heads.map((h) => `<span>${h}</span>`).join('')}</div>
-${rows || '<div class="empty">Nothing here yet.</div>'}
-</main></body></html>`;
+<div class="head"><span>Received</span>${heads.map((h) => `<span>${h}</span>`).join('')}${isApply ? '<span></span>' : ''}</div>
+${rows || `<div class="empty">${favOnly ? 'No favorites yet. Tap the star on an applicant to add them.' : 'Nothing here yet.'}</div>`}
+</main>
+<script>
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.fav');
+  if (!btn) return;
+  e.preventDefault(); // Don't open the row
+  if (btn.disabled) return;
+  const on = btn.getAttribute('aria-pressed') !== 'true';
+  const count = document.getElementById('fav-count');
+  const show = (state, delta) => {
+    btn.setAttribute('aria-pressed', String(state));
+    count.textContent = Number(count.textContent) + delta;
+  };
+  show(on, on ? 1 : -1);
+  btn.disabled = true;
+  try {
+    const res = await fetch('/admin/favorite', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: Number(btn.dataset.id), favorite: on }),
+    });
+    if (!res.ok) throw new Error(res.status);
+  } catch {
+    show(!on, on ? -1 : 1);
+    btn.title = 'Could not save. Try again.';
+  }
+  btn.disabled = false;
+});
+</script>
+</body></html>`;
   return new Response(html, {
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' },
   });
@@ -453,7 +511,7 @@ export default {
       return handleSubmit(path === '/api/apply' ? 'apply' : 'bid', request, env, ctx);
     }
 
-    if (path === '/admin' || path === '/admin/export' || path === '/admin/resume') {
+    if (path === '/admin' || path === '/admin/export' || path === '/admin/resume' || path === '/admin/favorite') {
       try {
         return await handleAdmin(request, env, url);
       } catch (err) {
